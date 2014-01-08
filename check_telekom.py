@@ -6,10 +6,10 @@
 # Cemu ovo sluzi?
 # Usled nesposobnosti naseg Telekoma i PTT, za jedan mesec mi nije stigao racun na kucnu adresu, 
 # pa ga nisam ni platio. Iako sam uvek redovno placao, cim mi stigne racun, debili su mi zbog tog 
-# neplacenog racuna odmah iskljucili fiksni telefon i ADSL. Morao sam naravno da se mlatim i platim 
-# da bi mi ponovo ukljucili. Zato sam seo i na brzinu sklepao ovu skriptu koja se loguje na 
-# Telekom Srbija portal, proverava racune i salje mail ako ima nesto novo. Znam da je moglo 
-# bolje da se napise, ali ovo je bilo na brzinu i radi posao.
+# neplacenog racuna odmah iskljucili fiksni telefon i ADSL, bez upozorenja. Morao sam naravno da 
+# se mlatim i platim da bi mi ponovo ukljucili. Zato sam seo i na brzinu sklepao ovu skriptu koja 
+# se loguje na Telekom Srbija portal, proverava racune i salje mail ako ima nesto novo. Znam da je 
+# moglo bolje da se napise, ali ovo je bilo na brzinu i radi posao.
 #
 # Autor: Miroslav Zdrale <mzdrale at gmail dot com>
 #        28.04.2013.
@@ -19,10 +19,8 @@ import cookielib
 import urllib
 import urllib2
 from bs4 import BeautifulSoup
-from pprint import pprint
 import pickle
 import smtplib
-import sys
 
 # Login URL
 login_url = "https://mojtelekom.telekom.rs/Users/login?checkuser=false"
@@ -158,7 +156,6 @@ class MojTelekom(object):
 
 			self.getDetails(sifra_korisnika1,sifra_korisnika2,user_name)
 
-			#print content
 
     def getDetails(self,tis_id,rb,user_name):
 		post_data = urllib.urlencode({
@@ -177,7 +174,6 @@ class MojTelekom(object):
 			_tr = details_data.findAll('tr')
 
 			racuni_dict = {}
-			#print "    Racuni:"
 			for item in _tr:
 				_td = item.findAll('td')
 				poziv_na_broj = _td[0].text.strip()
@@ -201,13 +197,11 @@ class MojTelekom(object):
 				}
 			
 				_dict[user_name][sifra_korisnika]['racuni'] = racuni_dict
-				#print "       - " + poziv_na_broj + " | " + datum_zaduzenja + " | " + iznos_zaduzenja + " | " + status
 
 		except:
 				print "    Ne postoje racuni za odabrani servis."
 
 		print ""
-		#print content	
 
 
     def logOut(self):
