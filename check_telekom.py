@@ -1,19 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# This script is used to check Telekom Srbija (Serbia) bills.
-#
-# Cemu ovo sluzi?
-# Usled nesposobnosti naseg Telekoma i PTT, za jedan mesec mi nije stigao racun na kucnu adresu, 
-# pa ga nisam ni platio. Iako sam uvek redovno placao, cim mi stigne racun, debili su mi zbog tog 
-# neplacenog racuna odmah iskljucili fiksni telefon i ADSL, bez upozorenja. Morao sam naravno da 
-# se mlatim i platim da bi mi ponovo ukljucili. Zato sam seo i na brzinu sklepao ovu skriptu koja 
-# se loguje na Telekom Srbija portal, proverava racune i salje mail ako ima nesto novo. Znam da je 
-# moglo bolje da se napise, ali ovo je bilo na brzinu i radi posao.
-#
-# Autor: Miroslav Zdrale <mzdrale at gmail dot com>
-#        28.04.2013.
-#
 
 import cookielib
 import urllib
@@ -21,6 +7,8 @@ import urllib2
 from bs4 import BeautifulSoup
 import pickle
 import smtplib
+import sys
+
 
 # Login URL
 login_url = "https://mojtelekom.telekom.rs/Users/login?checkuser=false"
@@ -73,6 +61,7 @@ def conv_lat2ascii(string, encoding='utf-8'):
 		u'ž': u'z',
 	}
 
+	#asc = string.decode(encoding)
 	asc = string
 
 	for l,a in LAT_TO_ASC.items():
@@ -150,12 +139,13 @@ class MojTelekom(object):
 			for servis in servisi:
 				servisi_arr.append(servis.text)
 				_dict[user_name][sifra_korisnika]['servisi'] = servisi_arr
-				print "       - " + servis.text
+				print "       - " + conv_lat2ascii(servis.text)
 
 			print ""
 
 			self.getDetails(sifra_korisnika1,sifra_korisnika2,user_name)
 
+			#print content
 
     def getDetails(self,tis_id,rb,user_name):
 		post_data = urllib.urlencode({
@@ -174,6 +164,7 @@ class MojTelekom(object):
 			_tr = details_data.findAll('tr')
 
 			racuni_dict = {}
+			#print "    Racuni:"
 			for item in _tr:
 				_td = item.findAll('td')
 				poziv_na_broj = _td[0].text.strip()
@@ -197,11 +188,13 @@ class MojTelekom(object):
 				}
 			
 				_dict[user_name][sifra_korisnika]['racuni'] = racuni_dict
+				#print "       - " + poziv_na_broj + " | " + datum_zaduzenja + " | " + iznos_zaduzenja + " | " + status
 
 		except:
 				print "    Ne postoje racuni za odabrani servis."
 
 		print ""
+		#print content	
 
 
     def logOut(self):
@@ -212,7 +205,11 @@ class MojTelekom(object):
 print ""
 
 print "-> Ucitavanje podataka od proslog puta"
-olddict = pickle.load(open(store_file, "rb"))
+try:
+	olddict = pickle.load(open(store_file, "rb"))
+except:
+	print "Ne postoje podaci od proslog puta. Verovatno prvi put pokrecete skriptu za ovog korisnika."
+	olddict = {}
 
 mt = MojTelekom(username,password)
 
@@ -224,37 +221,44 @@ r = mt.loginToWeb()
 
 print "-> Parsiranje strane"
 r = mt.parsePage()
+#print r
 
 print "-> Odjavljivanje"
-r = mt.logOut()
+#r = mt.logOut()
 
 print "-> Poredjenje podataka"
+
+#pprint(_dict)
+#sys.exit(0)
 
 msg = ""
 for n_user_name in sorted(_dict):
 	if n_user_name not in olddict:
 		msg += "\nNov korisnik: " + n_user_name + "\n"
+		for n_sifra_korisnika in sorted(_dict[n_user_name]):
+			msg += "\nSifra korisnika (" + n_user_name + "): " + n_sifra_korisnika + "\n"
 
-	for n_sifra_korisnika in sorted(_dict[n_user_name]):
-		if n_sifra_korisnika not in olddict[n_user_name]:
-			msg += "\nNova sifra korisnika (" + n_user_name + "): " + n_sifra_korisnika + "\n"
+	else:
+		for n_sifra_korisnika in sorted(_dict[n_user_name]):
+			if n_sifra_korisnika not in olddict[n_user_name]:
+				msg += "\nNova sifra korisnika (" + n_user_name + "): " + n_sifra_korisnika + "\n"
 
-		for n_poziv_na_broj in sorted(_dict[n_user_name][n_sifra_korisnika]['racuni']):
-			n_status = _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['status']
-			if n_poziv_na_broj not in olddict[n_user_name][n_sifra_korisnika]['racuni']:
-				msg += "\nNov racun za korisnika " + n_user_name + " (" + n_sifra_korisnika + "):\n\n"
-				msg += "    - Poziv na broj: " + n_poziv_na_broj + "\n"
-				msg += "    - Datum zaduzenja: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['datum'] + "\n"
-				msg += "    - Iznos: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['iznos'] + "\n"
-				msg += "    - Status: " + n_status + "\n"
+			for n_poziv_na_broj in sorted(_dict[n_user_name][n_sifra_korisnika]['racuni']):
+				n_status = _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['status']
+				if n_poziv_na_broj not in olddict[n_user_name][n_sifra_korisnika]['racuni']:
+					msg += "\nNov racun za korisnika " + n_user_name + " (" + n_sifra_korisnika + "):\n\n"
+					msg += "    - Poziv na broj: " + n_poziv_na_broj + "\n"
+					msg += "    - Datum zaduzenja: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['datum'] + "\n"
+					msg += "    - Iznos: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['iznos'] + "\n"
+					msg += "    - Status: " + n_status + "\n"
 
-			if n_status == "Nije placeno":
-				mail_subject = "PODSETNIK: Nije placen racun!"
-				msg += "\nPODSETNIK: Nije placen racun za korisnika " + n_user_name + " (" + n_sifra_korisnika + "):\n\n"
-				msg += "    - Poziv na broj: " + n_poziv_na_broj + "\n"
-				msg += "    - Datum zaduzenja: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['datum'] + "\n"
-				msg += "    - Iznos: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['iznos'] + "\n"
-				msg += "    - Status: " + n_status + "\n"				
+				if n_status == "Nije placeno":
+					mail_subject = "PODSETNIK: Nije placen racun!"
+					msg += "\nPODSETNIK: Nije placen racun za korisnika " + n_user_name + " (" + n_sifra_korisnika + "):\n\n"
+					msg += "    - Poziv na broj: " + n_poziv_na_broj + "\n"
+					msg += "    - Datum zaduzenja: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['datum'] + "\n"
+					msg += "    - Iznos: " + _dict[n_user_name][n_sifra_korisnika]['racuni'][n_poziv_na_broj]['iznos'] + "\n"
+					msg += "    - Status: " + n_status + "\n"				
 
 if msg != "":
 	print msg
@@ -283,3 +287,4 @@ else:
 print "-> Snimanje podataka"
 pickle.dump(_dict, open(store_file, "wb"))
 
+#pprint(_dict)
