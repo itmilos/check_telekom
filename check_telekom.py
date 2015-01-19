@@ -61,7 +61,6 @@ def conv_lat2ascii(string, encoding='utf-8'):
 		u'ž': u'z',
 	}
 
-	#asc = string.decode(encoding)
 	asc = string
 
 	for l,a in LAT_TO_ASC.items():
@@ -145,7 +144,6 @@ class MojTelekom(object):
 
 			self.getDetails(sifra_korisnika1,sifra_korisnika2,user_name)
 
-			#print content
 
     def getDetails(self,tis_id,rb,user_name):
 		post_data = urllib.urlencode({
@@ -164,7 +162,6 @@ class MojTelekom(object):
 			_tr = details_data.findAll('tr')
 
 			racuni_dict = {}
-			#print "    Racuni:"
 			for item in _tr:
 				_td = item.findAll('td')
 				poziv_na_broj = _td[0].text.strip()
@@ -188,13 +185,11 @@ class MojTelekom(object):
 				}
 			
 				_dict[user_name][sifra_korisnika]['racuni'] = racuni_dict
-				#print "       - " + poziv_na_broj + " | " + datum_zaduzenja + " | " + iznos_zaduzenja + " | " + status
 
 		except:
 				print "    Ne postoje racuni za odabrani servis."
 
 		print ""
-		#print content	
 
 
     def logOut(self):
@@ -221,15 +216,11 @@ r = mt.loginToWeb()
 
 print "-> Parsiranje strane"
 r = mt.parsePage()
-#print r
 
 print "-> Odjavljivanje"
-#r = mt.logOut()
+r = mt.logOut()
 
 print "-> Poredjenje podataka"
-
-#pprint(_dict)
-#sys.exit(0)
 
 msg = ""
 for n_user_name in sorted(_dict):
@@ -287,4 +278,3 @@ else:
 print "-> Snimanje podataka"
 pickle.dump(_dict, open(store_file, "wb"))
 
-#pprint(_dict)
